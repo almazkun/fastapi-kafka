@@ -4,11 +4,15 @@ build:
 pull: 
 	docker compose pull
 
-up: 
+up: kafka
+	sleep 2
 	docker compose up -d --build
 
 logs:
-	docker compose logs -n 100 -f
+	docker compose logs -n 100 -f case_context case_fetcher
+
+kafka:
+	docker compose up -d kafka
 
 down:
 	docker compose down -v

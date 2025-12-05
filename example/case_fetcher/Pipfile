@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 aiokafka = "==0.12.0"
 asyncio = "==4.0.0"
+aiosqlite = "==0.21.0"
 
 [dev-packages]
 

@@ -1,9 +1,8 @@
 import asyncio
-import sqlite3
+import aiosqlite
 import json
 import datetime
 from aiokafka import AIOKafkaProducer
-from contextlib import closing
 import os
 
 DATABASE_PATH = os.environ.get("DATABASE_PATH", "")
@@ -28,18 +27,18 @@ class Producer:
         if self.producer:
             await self.producer.stop()
 
-    def fetch_pending_cases(self):
-        query = """
-            SELECT uuid 
-            FROM ascvts_case
-            WHERE description is NULL or description = ''
-            LIMIT 100
-        """
-        with closing(sqlite3.connect(self.db_path)) as conn:
-            conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            cursor.execute(query)
-            return [dict(row) for row in cursor.fetchall()]
+    async def fetch_pending_cases(self):
+        query = "SELECT uuid FROM ascvts_case WHERE description is NULL or description = '' LIMIT 100 OFFSET ({page} - 1) * 100"
+        page = 1
+        async with aiosqlite.connect(self.db_path) as conn:
+            conn.row_factory = aiosqlite.Row
+            while True:
+                async with conn.execute(query.format(page=page)) as cursor:
+                    rows = await cursor.fetchall()
+                    if not rows:
+                        break
+                    yield [dict(row) for row in rows]
+                    page += 1
 
     async def publish_case(self, case):
         await self.producer.send_and_wait(
@@ -54,12 +53,9 @@ class Producer:
     async def run(self):
         await self.start()
         try:
-            cases = self.fetch_pending_cases()
-            print("Found cases:", len(cases), cases[0])
-            for case in cases:
-                event = await self.publish_case(case)
-                print("Case published", event)
-            print("Done")
+            async for batch in self.fetch_pending_cases():
+                for case in batch:
+                    await self.publish_case(case)
         except Exception as e:
             print("Something went wrong:", str(e))
         finally:
@@ -67,8 +63,7 @@ class Producer:
 
 
 async def main():
-    fetcher = Producer()
-    await fetcher.run()
+    await Producer().run()
 
 
 if __name__ == "__main__":

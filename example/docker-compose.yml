@@ -32,5 +32,14 @@ services:
     depends_on:
       - kafka
 
+  case_context:
+    build: ./case_context
+    container_name: case_context
+    environment:
+      KAFKA_SERVER: "kafka:9092"
+      DOCKER_CONTAINER: ${DOCKER_CONTAINER}
+    depends_on:
+      - kafka
+
 volumes:
   kafka_data:

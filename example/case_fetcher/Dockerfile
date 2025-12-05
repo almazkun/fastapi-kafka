@@ -1,15 +1,13 @@
-FROM python:3.14-alpine AS builder
+FROM python:3.14 AS builder
 
 WORKDIR /app
 
-RUN apk add --no-cache gcc musl-dev libffi-dev zlib-dev && \
-    pip install --no-cache-dir pipenv==2025.0.3
+RUN pip install --no-cache-dir pipenv==2025.0.3
 
 COPY Pipfile Pipfile.lock ./
 
 RUN PIPENV_VENV_IN_PROJECT=1 \
     pipenv install --deploy --ignore-pipfile --system
-
 
 FROM python:3.14-alpine
 ENV PYTHONDONTWRITEBYTECODE=1 \
